@@ -2,6 +2,7 @@ import {
   AppRouteRouteModule,
   type AppRouteRouteHandlerContext,
   type AppRouteRouteModuleOptions,
+  type AppRouteUserlandModule,
 } from '../../server/route-modules/app-route/module.compiled'
 import { RouteKind } from '../../server/route-kind'
 import { patchFetch as _patchFetch } from '../../server/lib/patch-fetch'
@@ -36,16 +37,21 @@ import {
   type ResponseGenerator,
 } from '../../server/response-cache'
 
-import * as userland from 'VAR_USERLAND'
-
 // These are injected by the loader afterwards. This is injected as a variable
 // instead of a replacement because this could also be `undefined` instead of
 // an empty string.
 declare const nextConfigOutput: AppRouteRouteModuleOptions['nextConfigOutput']
 
-// We inject the nextConfigOutput here so that we can use them in the route
-// module.
+// __next_app_require__ is injected by the loader as a zero-argument getter
+// that returns the userland module. Calling it at request time hits
+// devModuleCache on each request, allowing server HMR to pick up updated
+// exports without re-executing the entry chunk.
+declare const __next_app_require__: () => AppRouteUserlandModule
+
+// We inject the nextConfigOutput and __next_app_require__ here so that
+// we can use them in the route module.
 // INJECT:nextConfigOutput
+// INJECT:__next_app_require__
 
 const routeModule = new AppRouteRouteModule({
   definition: {
@@ -59,7 +65,7 @@ const routeModule = new AppRouteRouteModule({
   relativeProjectDir: process.env.__NEXT_RELATIVE_PROJECT_DIR || '',
   resolvedPagePath: 'VAR_RESOLVED_PAGE_PATH',
   nextConfigOutput,
-  userland,
+  getUserland: __next_app_require__,
 })
 
 // Pull out the exports that we need to expose from the module. This should

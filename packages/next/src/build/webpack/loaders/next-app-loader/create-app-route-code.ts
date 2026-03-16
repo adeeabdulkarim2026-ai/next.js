@@ -69,7 +69,6 @@ export async function createAppRouteCode({
   return await loadEntrypoint(
     'app-route',
     {
-      VAR_USERLAND: resolvedPagePath,
       VAR_DEFINITION_PAGE: page,
       VAR_DEFINITION_PATHNAME: pathname,
       VAR_DEFINITION_FILENAME: fileBaseName,
@@ -78,6 +77,7 @@ export async function createAppRouteCode({
     },
     {
       nextConfigOutput: JSON.stringify(nextConfigOutput),
+      __next_app_require__: `() => require(${JSON.stringify(resolvedPagePath)})`,
     }
   )
 }

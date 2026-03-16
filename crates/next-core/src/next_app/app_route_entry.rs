@@ -71,6 +71,12 @@ pub async fn get_app_route_entry(
         .unwrap_or("\"\"");
 
     // Load the file from the next.js codebase.
+    // Inject a zero-argument getter for the userland module. Using
+    // `require("INNER_APP_ROUTE")` as a string literal in the injected code
+    // lets Turbopack resolve the inner asset at compile time. At request time,
+    // `getUserland` calls this getter, hitting devModuleCache so that server
+    // HMR picks up updated exports without re-executing the entry chunk.
+    let userland_getter = format!("() => require(\"{}\")", inner);
     let virtual_source = load_next_js_template(
         "app-route.js",
         project_root.clone(),
@@ -81,9 +87,11 @@ pub async fn get_app_route_entry(
             // TODO(alexkirsz) Is this necessary?
             ("VAR_DEFINITION_BUNDLE_PATH", ""),
             ("VAR_RESOLVED_PAGE_PATH", &path.value_to_string().await?),
-            ("VAR_USERLAND", &inner),
         ],
-        [("nextConfigOutput", output_type)],
+        [
+            ("nextConfigOutput", output_type),
+            ("__next_app_require__", &userland_getter),
+        ],
         [],
     )
     .await?;
