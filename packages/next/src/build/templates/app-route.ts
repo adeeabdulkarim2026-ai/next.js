@@ -65,7 +65,13 @@ const routeModule = new AppRouteRouteModule({
   relativeProjectDir: process.env.__NEXT_RELATIVE_PROJECT_DIR || '',
   resolvedPagePath: 'VAR_RESOLVED_PAGE_PATH',
   nextConfigOutput,
-  getUserland: __next_app_require__,
+  // Mirror routeModule.isDev (which is !!process.env.__NEXT_DEV_SERVER):
+  // in dev, use a getter so each request fetches fresh exports from
+  // devModuleCache, enabling server HMR without re-executing the entry chunk.
+  // In production (next start), eagerly resolve the userland module at load time.
+  ...(process.env.__NEXT_DEV_SERVER
+    ? { getUserland: __next_app_require__ }
+    : { userland: __next_app_require__() }),
 })
 
 // Pull out the exports that we need to expose from the module. This should
