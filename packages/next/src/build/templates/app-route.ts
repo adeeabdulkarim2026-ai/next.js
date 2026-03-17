@@ -36,6 +36,7 @@ import {
   type ResponseCacheEntry,
   type ResponseGenerator,
 } from '../../server/response-cache'
+import * as userland from 'VAR_USERLAND'
 
 // These are injected by the loader afterwards. This is injected as a variable
 // instead of a replacement because this could also be `undefined` instead of
@@ -43,9 +44,9 @@ import {
 declare const nextConfigOutput: AppRouteRouteModuleOptions['nextConfigOutput']
 
 // __next_app_require__ is injected by the loader as a zero-argument getter
-// that returns the userland module. Calling it at request time hits
-// devModuleCache on each request, allowing server HMR to pick up updated
-// exports without re-executing the entry chunk.
+// that returns the userland module. Used in dev mode so each request fetches
+// fresh exports from devModuleCache, enabling server HMR without re-executing
+// the entry chunk.
 declare const __next_app_require__: () => AppRouteUserlandModule
 
 // We inject the nextConfigOutput and __next_app_require__ here so that
@@ -65,13 +66,17 @@ const routeModule = new AppRouteRouteModule({
   relativeProjectDir: process.env.__NEXT_RELATIVE_PROJECT_DIR || '',
   resolvedPagePath: 'VAR_RESOLVED_PAGE_PATH',
   nextConfigOutput,
-  // Mirror routeModule.isDev (which is !!process.env.__NEXT_DEV_SERVER):
-  // in dev, use a getter so each request fetches fresh exports from
+  // In dev, use a getter so each request fetches fresh exports from
   // devModuleCache, enabling server HMR without re-executing the entry chunk.
-  // In production (next start), eagerly resolve the userland module at load time.
+  // In production, use the statically imported userland module. The static
+  // import ensures webpack/Turbopack properly initializes the module before
+  // the entry uses it — even when the userland has async dependencies (e.g.
+  // ESM-only packages in serverExternalPackages). Without a static import,
+  // require() on an async webpack module returns a Promise instead of the
+  // exports object, causing a runtime error at segment config collection time.
   ...(process.env.__NEXT_DEV_SERVER
     ? { getUserland: __next_app_require__ }
-    : { userland: __next_app_require__() }),
+    : { userland: userland as AppRouteUserlandModule }),
 })
 
 // Pull out the exports that we need to expose from the module. This should

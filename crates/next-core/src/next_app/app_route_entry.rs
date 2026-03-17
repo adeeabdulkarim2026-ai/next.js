@@ -81,6 +81,7 @@ pub async fn get_app_route_entry(
         "app-route.js",
         project_root.clone(),
         [
+            ("VAR_USERLAND", &*inner),
             ("VAR_DEFINITION_PAGE", &*page.to_string()),
             ("VAR_DEFINITION_PATHNAME", &pathname),
             ("VAR_DEFINITION_FILENAME", path.file_stem().unwrap()),
